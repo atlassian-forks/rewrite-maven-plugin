@@ -658,10 +658,17 @@ public class MavenMojoProjectParser {
      * Used to scope `Files.walkFileTree` to the current maven project by skipping the subtrees of other MavenProjects.
      */
     private Set<Path> pathsToOtherMavenProjects(MavenProject mavenProject) {
-        return mavenSession.getProjects().stream()
-                .filter(o -> o != mavenProject)
-                .map(o -> o.getBasedir().toPath())
-                .collect(Collectors.toSet());
+        return Stream.concat(
+                // Paths to other projects in the reactor
+                mavenSession.getProjects()
+                        .stream()
+                        .filter(o -> o != mavenProject)
+                        .map(o -> o.getBasedir().toPath()),
+                // Paths to submodules of the current module (needed to correctly handle partial reactors)
+                mavenProject.getModules()
+                        .stream()
+                        .map(o -> mavenProject.getBasedir().toPath().resolve(o))
+                ).collect(Collectors.toSet());
     }
 
     private <T extends SourceFile> UnaryOperator<T> addProvenance(Path baseDir, List<Marker> provenance, @Nullable Collection<Path> generatedSources) {
